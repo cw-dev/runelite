@@ -117,6 +117,8 @@ public class WidgetID
 	public static final int FOSSIL_ISLAND_OXYGENBAR_ID = 609;
 	public static final int MINIGAME_TAB_ID = 76;
 	public static final int SPELLBOOK_GROUP_ID = 218;
+	public static final int CW_SARA_GROUP_ID = 58;
+	public static final int CW_ZAM_GROUP_ID = 59;
 
 	static class WorldMap
 	{
@@ -540,7 +542,7 @@ public class WidgetID
 	{
 		static final int POINTS_INFOBOX = 3;
 	}
-	
+
 	static class ExperienceDrop
 	{
 		static final int DROP_1 = 15;
@@ -678,5 +680,10 @@ public class WidgetID
 	static class ArceuusSpellBook
 	{
 		static final int ARCEUUS_HOME_TELEPORT = 145;
+	}
+
+	static class CastleWars
+	{
+		static final int TIME_REMAINING = 25;
 	}
 }
