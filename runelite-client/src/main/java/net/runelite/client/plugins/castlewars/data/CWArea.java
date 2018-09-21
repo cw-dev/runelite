@@ -22,47 +22,41 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.castlewars;
+package net.runelite.client.plugins.castlewars.data;
 
+import java.util.Arrays;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 
 @AllArgsConstructor
 @Getter
-enum CWBase
+public enum CWArea
 {
-	ZAM_BASE(CWTeam.ZAM, CWArea.ZAM_4TH, CWArea.ZAM_3RD, CWArea.ZAM_SPAWN, CWArea.ZAM_GROUND),
-	SARA_BASE(CWTeam.SARA, CWArea.SARA_4TH, CWArea.SARA_3RD, CWArea.SARA_SPAWN, CWArea.SARA_GROUND);
+	ZAM_4TH(WorldArea.fromCoords(2369, 3134, 2373, 3130, 3)),
+	ZAM_3RD(WorldArea.fromCoords(2368, 3135, 2376, 3127, 2)),
+	ZAM_SPAWN(WorldArea.fromCoords(2368, 3135, 2379, 3124, 1)),
+	ZAM_GROUND(WorldArea.fromCoords(2368, 3135, 2384, 3120, 0)),
+	ZAM_UND_LADDER(new WorldArea(2369, 9526, 1, 1, 0)),
 
-	private final CWTeam team;
-	private final CWArea fourth;
-	private final CWArea third;
-	private final CWArea spawn;
-	private final CWArea ground;
+	SARA_4TH(WorldArea.fromCoords(2426, 3077, 2430, 3073, 3)),
+	SARA_3RD(WorldArea.fromCoords(2423, 3081, 2431, 3072, 2)),
+	SARA_SPAWN(WorldArea.fromCoords(2420, 3083, 2431, 3072, 1)),
+	SARA_GROUND(WorldArea.fromCoords(2415, 3087, 2431, 3072, 0)),
+	SARA_UND_LADDER(new WorldArea(2430, 9481, 1, 1, 0)),
 
-	public static CWBase match(WorldPoint point)
+	NORTH_ROCKS(WorldArea.fromCoords(2418, 3125, 2420, 3123, 0)),
+	SOUTH_ROCKS(WorldArea.fromCoords(2377, 3088, 2378, 3084, 0));
+
+	private final WorldArea area;
+
+	public static CWArea match(WorldPoint point)
 	{
-		CWArea area = CWArea.match(point);
-
-		if (ZAM_BASE.getFourth().equals(area) ||
-			ZAM_BASE.getThird().equals(area) ||
-			ZAM_BASE.getSpawn().equals(area) ||
-			ZAM_BASE.getGround().equals(area))
-		{
-			return ZAM_BASE;
-		}
-
-		if (SARA_BASE.getFourth().equals(area) ||
-			SARA_BASE.getThird().equals(area) ||
-			SARA_BASE.getSpawn().equals(area) ||
-			SARA_BASE.getGround().equals(area))
-		{
-			return SARA_BASE;
-		}
-
-		return null;
+		return Arrays.stream(CWArea.values())
+			.filter(cwArea -> cwArea.getArea().intersectsWith(new WorldArea(point, 1, 1)))
+			.findFirst()
+			.orElse(null);
 	}
-
 
 }
