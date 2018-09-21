@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.castlewars;
+package net.runelite.client.plugins.castlewars.data;
 
 import java.awt.Color;
 import java.util.HashMap;
@@ -34,16 +34,11 @@ import net.runelite.api.widgets.WidgetInfo;
 
 @AllArgsConstructor
 @Getter
-enum CWTeam
+public enum CWTeam
 {
 	SARA(1, WidgetInfo.CW_TIME_REMAINING_SARA, new Color(142, 168, 255)),
 	ZAM(2, WidgetInfo.CW_TIME_REMAINING_ZAM, new Color(255, 156, 115)),
 	NONE(0, null, null);
-
-	private final int team;
-	private final WidgetInfo timeRemainingWidget;
-
-	private final Color color;
 
 	private static final Map<Integer, CWTeam> RS_TEAMS = new HashMap<>();
 	private static final Map<CWTeam, CWFlag> FLAGS = new HashMap<>();
@@ -51,7 +46,7 @@ enum CWTeam
 
 	static
 	{
-		CWTeam[] teams = values();
+		final CWTeam[] teams = values();
 
 		for (CWTeam team : teams)
 		{
@@ -70,10 +65,9 @@ enum CWTeam
 		}
 	}
 
-	public CWTeam opposite()
-	{
-		return this == ZAM ? SARA : this == SARA ? ZAM : NONE;
-	}
+	private final int team;
+	private final WidgetInfo timeRemainingWidget;
+	private final Color color;
 
 	public static CWTeam ofPlayer(Player player)
 	{
@@ -81,7 +75,13 @@ enum CWTeam
 		{
 			return NONE;
 		}
+
 		return RS_TEAMS.getOrDefault(player.getTeam(), NONE);
+	}
+
+	public CWTeam opposite()
+	{
+		return this == ZAM ? SARA : this == SARA ? ZAM : NONE;
 	}
 
 	public CWFlag getFlag()

@@ -24,48 +24,32 @@
  */
 package net.runelite.client.plugins.castlewars;
 
+import java.time.Instant;
 import lombok.Data;
-
 
 @Data
 class GameRecord
 {
-	public int teamSize;
-	public int world;
-	public boolean braced;
-	public int zamScore;
-	public int saraScore;
-	public long createdTs;
+	private final Instant created = Instant.now();
+	private final int world;
+	private final int teamSize;
 
-	public int cadesSet;
-	public int cadesTinded;
-	public int cadesBucketed;
-	public int cadesExploded;
+	private int zamScore;
+	private int saraScore;
 
-	public int totalCastAttempts;
-	public int splashes;
-	public int frozenCount;
-	public int freezesOnMe;
-	public int splashesOnMe;
+	private int flagsSafed;
+	private int flagsScored;
 
-	public int deaths;
-	private int damageTaken;
-	private int highestHitTaken;
-	public int timesSpeared;
-
+	// Positive/damage dealt
 	private double damageDealt;
 	private double highestHitDealt;
 
-	public int flagsSafed;
-	public int flagsScored;
-
-	GameRecord(int teamSize, long createdTs, boolean braced, int world)
-	{
-		this.teamSize = teamSize;
-		this.createdTs = createdTs;
-		this.braced = braced;
-		this.world = world;
-	}
+	// Negative/damage taken
+	private int damageTaken;
+	private int highestHitTaken;
+	private int deaths;
+	private int freezesOnMe;
+	private int timesSpeared;
 
 	void recordDamageDealt(double approxDmg)
 	{
@@ -83,31 +67,5 @@ class GameRecord
 		{
 			highestHitTaken = dmg;
 		}
-	}
-
-	double getCastRate()
-	{
-		if (totalCastAttempts == 0)
-		{
-			return 0.0;
-		}
-
-		return (1 - (splashes / (double) totalCastAttempts)) * 100;
-	}
-
-	int getTotalCastsOnMe()
-	{
-		return splashesOnMe + freezesOnMe;
-	}
-
-	double getSplashRate()
-	{
-		int totalCastsOnMe = getTotalCastsOnMe();
-		if (totalCastsOnMe == 0)
-		{
-			return 0;
-		}
-
-		return (splashesOnMe / (double) totalCastsOnMe) * 100;
 	}
 }

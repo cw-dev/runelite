@@ -22,7 +22,7 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.castlewars;
+package net.runelite.client.plugins.castlewars.data;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -31,7 +31,7 @@ import net.runelite.api.ObjectID;
 
 @AllArgsConstructor
 @Getter
-enum CWFlag
+public enum CWFlag
 {
 	ZAM(ItemID.ZAMORAK_BANNER, ObjectID.ZAMORAK_STANDARD, CWTeam.ZAM, "Zamorak Standard"),
 	SARA(ItemID.SARADOMIN_BANNER, ObjectID.SARADOMIN_STANDARD, CWTeam.SARA, "Saradomin Standard");

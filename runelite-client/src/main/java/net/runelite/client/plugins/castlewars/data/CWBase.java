@@ -22,45 +22,47 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.castlewars;
+package net.runelite.client.plugins.castlewars.data;
 
-import java.util.HashMap;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import net.runelite.api.NpcID;
+import net.runelite.api.coords.WorldPoint;
 
 @AllArgsConstructor
 @Getter
-enum CWBarricade
+public enum CWBase
 {
-	SARA(NpcID.BARRICADE),
-	SARA_TINDED(NpcID.BARRICADE_5723),
-	ZAM(NpcID.BARRICADE_5724),
-	ZAM_TINDED(NpcID.BARRICADE_5725);
+	ZAM_BASE(CWTeam.ZAM, CWArea.ZAM_4TH, CWArea.ZAM_3RD, CWArea.ZAM_SPAWN, CWArea.ZAM_GROUND),
+	SARA_BASE(CWTeam.SARA, CWArea.SARA_4TH, CWArea.SARA_3RD, CWArea.SARA_SPAWN, CWArea.SARA_GROUND);
 
-	private final int npcID;
+	private final CWTeam team;
+	private final CWArea fourth;
+	private final CWArea third;
+	private final CWArea spawn;
+	private final CWArea ground;
 
-	private static final Map<Integer, CWBarricade> CADES = new HashMap<>();
-
-	static
+	public static CWBase match(WorldPoint point)
 	{
-		CWBarricade[] cades = values();
+		CWArea area = CWArea.match(point);
 
-		for (CWBarricade cade : cades)
+		if (ZAM_BASE.getFourth().equals(area) ||
+			ZAM_BASE.getThird().equals(area) ||
+			ZAM_BASE.getSpawn().equals(area) ||
+			ZAM_BASE.getGround().equals(area))
 		{
-			CADES.put(cade.getNpcID(), cade);
+			return ZAM_BASE;
 		}
+
+		if (SARA_BASE.getFourth().equals(area) ||
+			SARA_BASE.getThird().equals(area) ||
+			SARA_BASE.getSpawn().equals(area) ||
+			SARA_BASE.getGround().equals(area))
+		{
+			return SARA_BASE;
+		}
+
+		return null;
 	}
 
-	public boolean isTinded()
-	{
-		return SARA_TINDED.equals(this) || ZAM_TINDED.equals(this);
-	}
 
-
-	public static CWBarricade fromNPCId(int npcID)
-	{
-		return CADES.get(npcID);
-	}
 }

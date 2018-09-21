@@ -24,60 +24,34 @@
  */
 package net.runelite.client.plugins.castlewars;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 import javax.inject.Inject;
-import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.Item;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.ItemID;
-import static net.runelite.api.MenuAction.ITEM_DROP;
-import static net.runelite.api.MenuAction.ITEM_USE_ON_NPC;
-import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
+import net.runelite.api.Skill;
 import static net.runelite.api.Skill.HITPOINTS;
-import static net.runelite.api.Skill.MAGIC;
 import net.runelite.api.Varbits;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.kit.KitType;
+import net.runelite.client.plugins.castlewars.data.CWArea;
+import net.runelite.client.plugins.castlewars.data.CWBase;
+import net.runelite.client.plugins.castlewars.data.CWFlag;
+import net.runelite.client.plugins.castlewars.data.CWTeam;
 import net.runelite.client.util.Text;
 
 class StatsTracker
 {
-	private static final int ICE_BARRAGE_SPLASH_XP = 52;
-	private static final double HP_XP_PER_HIT = 1.3333;
-	private static final int MAX_REASONABLE_HIT = 110;
-
 	// Number of ticks after which we will no longer associate an action with a click.
 	private static final int CLICK_ACTION_TICK_THRESHOLD = 5;
+	private static final double HP_XP_PER_HIT = 1.3333;
 
-	@Inject
-	private Client client;
+	private final Client client;
 
 	private GameRecord currentGame;
 	private CWTeam ourTeam;
-
-	// Splashes
 	private int lastHPXP;
-	private int lastMageXP;
-	private int castBarrageOnTick;
-	private int mageXpGained;
-	private int mageXpOnTick;
-
-	// Tinds
-	private WorldPoint tindTarget;
-	private Map<WorldPoint, CWBarricade> cadesLastTick = new HashMap<>();
-
-	// Item usage
-	private int invExplosLastTick;
-	private int invCadesLastTick;
-	private int invBucketsLastTick;
-	private int droppedExploOnTick;
-	private int droppedCadeOnTick;
 
 	// Flags
 	private boolean holdingTheirsLastTick = false;
@@ -85,65 +59,37 @@ class StatsTracker
 	private int clickedOwnDroppedFlagOnTick;
 	private int clickedFlagStandOnTick;
 
-	void onJoinGame(int validLobbyPlayers, boolean braced, int world)
+	@Inject
+	private StatsTracker(final Client client)
 	{
-		ourTeam = CWTeam.ofPlayer(client.getLocalPlayer());
-		currentGame = new GameRecord(validLobbyPlayers, System.currentTimeMillis(), braced, world);
+		this.client = client;
 	}
 
-	GameRecord onLeaveGame()
+	void startGame(int world, int validLobbyPlayers)
+	{
+		ourTeam = CWTeam.ofPlayer(client.getLocalPlayer());
+		currentGame = new GameRecord(world, validLobbyPlayers);
+		lastHPXP = client.getSkillExperience(Skill.HITPOINTS);
+	}
+
+	GameRecord finishGame()
 	{
 		currentGame.setSaraScore(client.getVar(Varbits.CW_SARA_SCORE));
 		currentGame.setZamScore(client.getVar(Varbits.CW_ZAM_SCORE));
-		return currentGame;
-	}
 
-	public void reset()
-	{
+		final GameRecord game = currentGame;
 		currentGame = null;
 		ourTeam = null;
+		lastHPXP = 0;
+		return game;
 	}
 
-	void onBarrageCast(int currentTick)
-	{
-		currentGame.totalCastAttempts++;
-		castBarrageOnTick = currentTick;
-
-		checkSplash(currentTick);
-	}
-
-	void onMageXpChanged(int currentTick)
-	{
-		int currentMageXP = client.getSkillExperience(MAGIC);
-		mageXpGained = currentMageXP - lastMageXP;
-		lastMageXP = currentMageXP;
-		mageXpOnTick = currentTick;
-
-		checkSplash(currentTick);
-	}
-
-	private void checkSplash(int currentTick)
-	{
-		if (currentTick == castBarrageOnTick &&
-			currentTick == mageXpOnTick &&
-			mageXpGained > 0 &&
-			mageXpGained <= ICE_BARRAGE_SPLASH_XP)
-		{
-			currentGame.splashes++;
-		}
-	}
-
-	void onHPXpChanged()
+	void recordDamageDealt()
 	{
 		int currentHPXP = client.getSkillExperience(HITPOINTS);
 		int hpXpGained = currentHPXP - lastHPXP;
 		lastHPXP = currentHPXP;
-
-		double approxDmg = (double) hpXpGained / HP_XP_PER_HIT;
-		if (approxDmg < MAX_REASONABLE_HIT)
-		{
-			currentGame.recordDamageDealt(approxDmg);
-		}
+		currentGame.recordDamageDealt((double) hpXpGained / HP_XP_PER_HIT);
 	}
 
 	void recordDamageTaken(int amount)
@@ -153,38 +99,25 @@ class StatsTracker
 
 	void recordFrozen()
 	{
-		currentGame.frozenCount++;
+		currentGame.setFreezesOnMe(currentGame.getFreezesOnMe() + 1);
 	}
 
 	void recordSpeared()
 	{
-		currentGame.timesSpeared++;
-	}
-
-	void recordCastOnMe()
-	{
-		currentGame.freezesOnMe++;
-	}
-
-	void recordSplashOnMe()
-	{
-		currentGame.splashesOnMe++;
+		currentGame.setTimesSpeared(currentGame.getTimesSpeared() + 1);
 	}
 
 	void recordDeath()
 	{
-		currentGame.deaths++;
+		currentGame.setDeaths(currentGame.getDeaths() + 1);
+
 		if (holdingOwnFlag())
 		{
-			CWArea diedInArea = CWArea.match(client.getLocalPlayer().getWorldLocation());
-			if (CWArea.NORTH_ROCKS.equals(diedInArea) || CWArea.SOUTH_ROCKS.equals(diedInArea))
-			{
-				currentGame.flagsSafed++;
-			}
+			lostOurFlag();
 		}
 	}
 
-	void checkHoldingFlag(int currentTick)
+	void checkHoldingFlag()
 	{
 		boolean holdingOwnThisTick = holdingOwnFlag();
 		if (holdingOwnLastTick && !holdingOwnThisTick)
@@ -197,19 +130,48 @@ class StatsTracker
 		boolean holdingTheirsThisTick = holdingTheirFlag();
 		if (holdingTheirsLastTick && !holdingTheirsThisTick)
 		{
-			lostTheirFlag(currentTick);
+			lostTheirFlag();
 		}
 		holdingTheirsLastTick = holdingTheirsThisTick;
 	}
 
-	private void lostTheirFlag(int currentTick)
+	void onDroppedFlagDespawned(CWFlag despawnedFlag, WorldPoint despawnedAt)
 	{
-		CWArea playerArea = CWArea.match(client.getLocalPlayer().getWorldLocation());
-		CWArea ourFourth = ourTeam.getBase().getFourth();
-		boolean recentlyClickedFlagStand = currentTick - clickedFlagStandOnTick < CLICK_ACTION_TICK_THRESHOLD;
+		final int onTick = client.getTickCount();
+		boolean isOurFlag = despawnedFlag != null && despawnedFlag.getTeam().equals(ourTeam);
+		boolean recentlyClickedOwnFlag = onTick - clickedOwnDroppedFlagOnTick < CLICK_ACTION_TICK_THRESHOLD;
+		boolean nextToFlag = despawnedAt.distanceTo(client.getLocalPlayer().getWorldLocation()) == 1;
+
+		if (recentlyClickedOwnFlag && isOurFlag && inOwnBase() && nextToFlag && !visiblePlayerHoldingOurFlag())
+		{
+			currentGame.setFlagsSafed(currentGame.getFlagsSafed() + 1);
+		}
+	}
+
+	void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		final int currentTick = client.getTickCount();
+
+		if ("Capture".equals(event.getMenuOption()))
+		{
+			clickedFlagStandOnTick = currentTick;
+		}
+		else if (matchesOwnDroppedFlag(event))
+		{
+			clickedOwnDroppedFlagOnTick = currentTick;
+		}
+	}
+
+	private void lostTheirFlag()
+	{
+		final int currentTick = client.getTickCount();
+		final CWArea playerArea = CWArea.match(client.getLocalPlayer().getWorldLocation());
+		final CWArea ourFourth = ourTeam.getBase().getFourth();
+		final boolean recentlyClickedFlagStand = currentTick - clickedFlagStandOnTick < CLICK_ACTION_TICK_THRESHOLD;
+
 		if (ourFourth != null && ourFourth.equals(playerArea) && recentlyClickedFlagStand)
 		{
-			currentGame.flagsScored++;
+			currentGame.setFlagsScored(currentGame.getFlagsSafed() + 1);
 		}
 	}
 
@@ -224,162 +186,8 @@ class StatsTracker
 		CWArea ourGround = ourTeam.getBase().getGround();
 		if (playerArea.equals(ourGround) || playerArea.equals(CWArea.NORTH_ROCKS) || playerArea.equals(CWArea.SOUTH_ROCKS))
 		{
-			currentGame.flagsSafed++;
+			currentGame.setFlagsSafed(currentGame.getFlagsSafed() + 1);
 		}
-	}
-
-	void onDroppedFlagDespawned(CWFlag despawnedFlag, int onTick, WorldPoint despawnedAt)
-	{
-		boolean isOurFlag = despawnedFlag != null && despawnedFlag.getTeam().equals(ourTeam);
-		boolean recentlyClickedOwnFlag = onTick - clickedOwnDroppedFlagOnTick < CLICK_ACTION_TICK_THRESHOLD;
-		boolean nextToFlag = despawnedAt.distanceTo(client.getLocalPlayer().getWorldLocation()) == 1;
-
-		if (recentlyClickedOwnFlag && isOurFlag && inOwnBase() && nextToFlag && !visiblePlayerHoldingOurFlag())
-		{
-			currentGame.flagsSafed++;
-		}
-	}
-
-	void checkItemUsage(ItemContainer inventory, int currentTick)
-	{
-		if (inventory == null)
-		{
-			return;
-		}
-
-		Item[] invItems = inventory.getItems();
-		if (invItems == null)
-		{
-			return;
-		}
-
-		int invExplosThisTick = 0;
-		int invCadesThisTick = 0;
-		int invBucketsThisTick = 0;
-		for (Item item : invItems)
-		{
-			switch (item.getId())
-			{
-				case ItemID.EXPLOSIVE_POTION:
-					invExplosThisTick++;
-					break;
-				case ItemID.BARRICADE:
-					invCadesThisTick++;
-					break;
-				case ItemID.BUCKET_OF_WATER:
-					invBucketsThisTick++;
-					break;
-			}
-		}
-
-		if (invExplosLastTick - invExplosThisTick == 1 && currentTick - droppedExploOnTick > 1)
-		{
-			currentGame.cadesExploded++;
-		}
-
-		if (invCadesLastTick - invCadesThisTick == 1 && currentTick - droppedCadeOnTick > 1)
-		{
-			currentGame.cadesSet++;
-		}
-
-		if (invBucketsLastTick - invBucketsThisTick == 1)
-		{
-			currentGame.cadesBucketed++;
-		}
-
-		invExplosLastTick = invExplosThisTick;
-		invCadesLastTick = invCadesThisTick;
-		invBucketsLastTick = invBucketsThisTick;
-	}
-
-	void checkTindedCades()
-	{
-		Map<WorldPoint, CWBarricade> cadesThisTick = findCades();
-		for (WorldPoint newCadeLocation : cadesThisTick.keySet())
-		{
-			CWBarricade oldCade = cadesLastTick.get(newCadeLocation);
-			CWBarricade newCade = cadesThisTick.get(newCadeLocation);
-
-			if (oldCade == null || newCade == null)
-			{
-				continue;
-			}
-
-			if (!oldCade.isTinded() && newCade.isTinded())
-			{
-				onCadeTinded(newCadeLocation, newCade.getNpcID());
-			}
-		}
-
-		cadesLastTick = cadesThisTick;
-	}
-
-	private void onCadeTinded(WorldPoint newTindedCadeLocation, int newTindedCadeId)
-	{
-		Actor ourTarget = client.getLocalPlayer().getInteracting();
-		if (newTindedCadeLocation == null || ourTarget == null || !(ourTarget instanceof NPC))
-		{
-			return;
-		}
-
-		NPC ourTargetCade = ((NPC) ourTarget);
-		WorldPoint ourPosition = client.getLocalPlayer().getWorldLocation();
-
-		if (ourTargetCade.getId() == newTindedCadeId &&
-			newTindedCadeLocation.equals(ourTargetCade.getWorldLocation()) &&
-			ourPosition.distanceTo(ourTargetCade.getWorldLocation()) == 1 &&
-			newTindedCadeLocation.equals(tindTarget))
-		{
-			currentGame.cadesTinded++;
-		}
-
-	}
-
-	public void onMenuOptionClicked(MenuOptionClicked event, int currentTick)
-	{
-		if (matchesTindCade(event))
-		{
-			CWBarricade cade = CWBarricade.fromNPCId(event.getId());
-			if (cade != null && !cade.isTinded())
-			{
-				tindTarget = getMenuNPCLocation(event.getId());
-			}
-		}
-
-		if (matchesDropCade(event))
-		{
-			droppedCadeOnTick = currentTick;
-		}
-
-		if (matchesDropExplo(event))
-		{
-			droppedExploOnTick = currentTick;
-		}
-
-		if ("Capture".equals(event.getMenuOption()))
-		{
-			clickedFlagStandOnTick = currentTick;
-		}
-
-		if (matchesOwnDroppedFlag(event))
-		{
-			clickedOwnDroppedFlagOnTick = currentTick;
-		}
-	}
-
-	private WorldPoint getMenuNPCLocation(int menuId)
-	{
-		final NPC[] cachedNPCs = client.getCachedNPCs();
-		if (menuId < cachedNPCs.length)
-		{
-			NPC cachedNPC = cachedNPCs[menuId];
-			if (cachedNPC != null)
-			{
-				return cachedNPC.getWorldLocation();
-			}
-		}
-
-		return null;
 	}
 
 	private boolean holdingTheirFlag()
@@ -411,21 +219,6 @@ class StatsTracker
 		return CWFlag.fromEquipment(playerComposition.getEquipmentId(KitType.WEAPON));
 	}
 
-	private Map<WorldPoint, CWBarricade> findCades()
-	{
-		HashMap<WorldPoint, CWBarricade> cadeMap = new HashMap<>();
-		for (NPC npc : client.getNpcs())
-		{
-			CWBarricade cade = CWBarricade.fromNPCId(npc.getId());
-			if (cade != null)
-			{
-				cadeMap.put(npc.getWorldLocation(), cade);
-			}
-		}
-
-		return cadeMap;
-	}
-
 	private boolean inOwnBase()
 	{
 		CWBase currentBase = CWBase.match(client.getLocalPlayer().getWorldLocation());
@@ -437,7 +230,7 @@ class StatsTracker
 		Player me = client.getLocalPlayer();
 		return client.getPlayers().stream()
 			.filter(Objects::nonNull)
-			.filter(player -> !player.equals(me))
+			.filter(player -> player != me)
 			.filter(player -> player.getPlayerComposition() != null)
 			.anyMatch(player ->
 			{
@@ -452,21 +245,5 @@ class StatsTracker
 		String menuTarget = Text.removeTags(event.getMenuTarget());
 		CWFlag ownFlag = ourTeam.getFlag();
 		return ownFlag != null && ownFlag.getMenuName().equals(menuTarget);
-	}
-
-	private boolean matchesDropExplo(MenuOptionClicked event)
-	{
-		return ITEM_DROP == event.getMenuAction() && event.getId() == ItemID.EXPLOSIVE_POTION;
-	}
-
-	private boolean matchesDropCade(MenuOptionClicked event)
-	{
-		return ITEM_DROP == event.getMenuAction() && event.getId() == ItemID.BARRICADE;
-	}
-
-	private boolean matchesTindCade(MenuOptionClicked event)
-	{
-		String menuTarget = Text.removeTags(event.getMenuTarget());
-		return ITEM_USE_ON_NPC == event.getMenuAction() && "Tinderbox -> Barricade".equals(menuTarget);
 	}
 }

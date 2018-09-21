@@ -31,26 +31,20 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.AnimationID;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.GraphicID;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
-import net.runelite.api.ItemID;
 import net.runelite.api.Player;
-import net.runelite.api.PlayerComposition;
-import static net.runelite.api.Skill.HITPOINTS;
-import static net.runelite.api.Skill.MAGIC;
+import net.runelite.api.Skill;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ExperienceChanged;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameTick;
-import net.runelite.api.events.GraphicChanged;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.LocalPlayerDeath;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.kit.KitType;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -58,13 +52,14 @@ import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.castlewars.data.CWFlag;
+import net.runelite.client.plugins.castlewars.data.CWTeam;
 import net.runelite.client.util.Text;
 
 @PluginDescriptor(
 	name = "Castle Wars",
 	description = "Show post-game competitive CW statistics such as cast rate and number of barricades set",
-	tags = {"castle wars", "cw", "minigame"},
-	enabledByDefault = false
+	tags = {"castle wars", "cw", "minigame"}
 )
 @Slf4j
 public class CastleWarsPlugin extends Plugin
@@ -82,56 +77,38 @@ public class CastleWarsPlugin extends Plugin
 
 	private boolean inCwGame = false;
 
+	private static String highlight(int value)
+	{
+		return highlight(Integer.toString(value));
+	}
+
+	private static String highlight(String value)
+	{
+		return new ChatMessageBuilder()
+			.append(ChatColorType.HIGHLIGHT)
+			.append(value)
+			.append(ChatColorType.NORMAL)
+			.build();
+	}
+
 	@Subscribe
 	public void onAnimationChanged(AnimationChanged event)
 	{
-		Player localPlayer = client.getLocalPlayer();
+		final Player localPlayer = client.getLocalPlayer();
+
 		if (!inCwGame || localPlayer == null)
 		{
 			return;
 		}
 
-		int animID = event.getActor().getAnimation();
-		if (localPlayer.equals(event.getActor()))
-		{
-			if (animID == AnimationID.MAGIC_ANCIENT_BARRAGE)
-			{
-				statsTracker.onBarrageCast(client.getTickCount());
-			}
-			else if (animID == AnimationID.MAGIC_STANDARD_TELEPORT)
-			{
-				statsTracker.recordDeath();
-			}
-		}
-		else if (localPlayer.equals(event.getActor().getInteracting()))
+		final int animID = event.getActor().getAnimation();
+
+		if (localPlayer == event.getActor().getInteracting())
 		{
 			if (animID == AnimationID.DRAGON_SPEAR_SPEC || animID == AnimationID.ZAM_HASTA_SPEC)
 			{
 				statsTracker.recordSpeared();
 			}
-		}
-	}
-
-	@Subscribe
-	public void onGraphicChanged(GraphicChanged event)
-	{
-		Player localPlayer = client.getLocalPlayer();
-		if (!inCwGame || localPlayer == null || !localPlayer.equals(event.getActor()))
-		{
-			return;
-		}
-
-		int graphicID = event.getActor().getGraphic();
-		if (graphicID == GraphicID.ICE_RUSH ||
-			graphicID == GraphicID.ICE_BURST ||
-			graphicID == GraphicID.ICE_BLITZ ||
-			graphicID == GraphicID.ICE_BARRAGE)
-		{
-			statsTracker.recordCastOnMe();
-		}
-		else if (graphicID == GraphicID.SPLASH)
-		{
-			statsTracker.recordSplashOnMe();
 		}
 	}
 
@@ -149,13 +126,15 @@ public class CastleWarsPlugin extends Plugin
 	@Subscribe
 	public void onHitsplatApplied(HitsplatApplied event)
 	{
-		Player localPlayer = client.getLocalPlayer();
+		final Player localPlayer = client.getLocalPlayer();
+
 		if (!inCwGame || localPlayer == null || event.getActor() != localPlayer)
 		{
 			return;
 		}
 
-		Hitsplat hitsplat = event.getHitsplat();
+		final Hitsplat hitsplat = event.getHitsplat();
+
 		if (hitsplat != null && hitsplat.getHitsplatType() == Hitsplat.HitsplatType.DAMAGE)
 		{
 			statsTracker.recordDamageTaken(hitsplat.getAmount());
@@ -170,17 +149,13 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		ItemContainer container = event.getItemContainer();
+		final ItemContainer container = event.getItemContainer();
+
 		if (container == client.getItemContainer(InventoryID.EQUIPMENT))
 		{
-			statsTracker.checkHoldingFlag(client.getTickCount());
-		}
-		else if (container == client.getItemContainer(InventoryID.INVENTORY))
-		{
-			statsTracker.checkItemUsage(container, client.getTickCount());
+			statsTracker.checkHoldingFlag();
 		}
 	}
-
 
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
@@ -190,19 +165,13 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		statsTracker.onMenuOptionClicked(event, client.getTickCount());
+		statsTracker.onMenuOptionClicked(event);
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		checkInGame();
-		if (!inCwGame)
-		{
-			return;
-		}
-
-		statsTracker.checkTindedCades();
 	}
 
 	@Subscribe
@@ -213,10 +182,10 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		CWFlag droppedFlag = CWFlag.fromDroppedObjectID(event.getGameObject().getId());
+		final CWFlag droppedFlag = CWFlag.fromDroppedObjectID(event.getGameObject().getId());
 		if (droppedFlag != null)
 		{
-			statsTracker.onDroppedFlagDespawned(droppedFlag, client.getTickCount(), event.getTile().getWorldLocation());
+			statsTracker.onDroppedFlagDespawned(droppedFlag, event.getTile().getWorldLocation());
 		}
 
 	}
@@ -224,19 +193,12 @@ public class CastleWarsPlugin extends Plugin
 	@Subscribe
 	public void onExperienceChanged(ExperienceChanged event)
 	{
-		if (!inCwGame)
+		if (!inCwGame || event.getSkill() != Skill.HITPOINTS)
 		{
 			return;
 		}
 
-		if (event.getSkill() == MAGIC)
-		{
-			statsTracker.onMageXpChanged(client.getTickCount());
-		}
-		else if (event.getSkill() == HITPOINTS)
-		{
-			statsTracker.onHPXpChanged();
-		}
+		statsTracker.recordDamageDealt();
 	}
 
 	@Subscribe
@@ -247,8 +209,7 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		String message = Text.removeTags(event.getMessage());
-		if (message.equals(FROZEN_MESSAGE))
+		if (FROZEN_MESSAGE.equals(Text.removeTags(event.getMessage())))
 		{
 			statsTracker.recordFrozen();
 		}
@@ -259,6 +220,7 @@ public class CastleWarsPlugin extends Plugin
 	{
 		boolean cwHUDVisible;
 		CWTeam ourTeam = CWTeam.ofPlayer(client.getLocalPlayer());
+
 		if (ourTeam == null || ourTeam.equals(CWTeam.NONE))
 		{
 			cwHUDVisible = false;
@@ -269,18 +231,20 @@ public class CastleWarsPlugin extends Plugin
 			cwHUDVisible = gameTimeRemaining != null && !gameTimeRemaining.isHidden();
 		}
 
-		if (inCwGame != cwHUDVisible)
+		if (inCwGame == cwHUDVisible)
 		{
-			inCwGame = cwHUDVisible;
-			if (inCwGame)
-			{
-				statsTracker.onJoinGame(countValidLobbyPlayers(), wearingCWBrace(client.getLocalPlayer()), client.getWorld());
-			}
-			else
-			{
-				sendGameRecordMessage(statsTracker.onLeaveGame());
-				statsTracker.reset();
-			}
+			return;
+		}
+
+		inCwGame = cwHUDVisible;
+
+		if (inCwGame)
+		{
+			statsTracker.startGame(client.getWorld(), countValidLobbyPlayers());
+		}
+		else
+		{
+			sendGameRecordMessage(statsTracker.finishGame());
 		}
 	}
 
@@ -289,22 +253,7 @@ public class CastleWarsPlugin extends Plugin
 		return (int) client.getPlayers()
 			.stream()
 			.filter(Objects::nonNull)
-			//.filter(this::wearingCWBrace)
 			.count();
-	}
-
-	private boolean wearingCWBrace(Player p)
-	{
-		PlayerComposition playerComposition = p.getPlayerComposition();
-		if (playerComposition == null)
-		{
-			return false;
-		}
-
-		int glovesID = playerComposition.getEquipmentId(KitType.HANDS);
-		return glovesID == ItemID.CASTLE_WARS_BRACELET1 ||
-			glovesID == ItemID.CASTLE_WARS_BRACELET2 ||
-			glovesID == ItemID.CASTLE_WARS_BRACELET3;
 	}
 
 	private void sendGameRecordMessage(GameRecord gameRecord)
@@ -314,65 +263,48 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		String gameSummary = new ChatMessageBuilder()
+		final String gameSummary = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
-			.append("Zam ")
-			.append(higlight(gameRecord.getZamScore()))
+			.append("Zamorak ")
+			.append(highlight(gameRecord.getZamScore()))
 			.append(" - ")
-			.append(higlight(gameRecord.getSaraScore()))
-			.append(" Sara | ")
-			.append(higlight(String.format("%dv%d", gameRecord.getTeamSize(), gameRecord.getTeamSize())))
+			.append(highlight(gameRecord.getSaraScore()))
+			.append(" Saradomin | ")
+			.append(highlight(String.format("%dv%d", gameRecord.getTeamSize(), gameRecord.getTeamSize())))
 			.append(String.format(" [w%d]", gameRecord.getWorld()))
 			.build();
 
-		String cwSummary = new ChatMessageBuilder()
+		final String cwSummary = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
 			.append("Scored: ")
-			.append(higlight(gameRecord.getFlagsScored()))
+			.append(highlight(gameRecord.getFlagsScored()))
 			.append(". Safed: ")
-			.append(higlight(gameRecord.getFlagsSafed()))
-			.append(". Cades Set: ")
-			.append(higlight(gameRecord.getCadesSet()))
-			.append(",  Tinded: ")
-			.append(higlight(gameRecord.getCadesTinded()))
-			.append(",  Exploded: ")
-			.append(higlight(gameRecord.getCadesExploded()))
-			.append(",  Bucketed: ")
-			.append(higlight(gameRecord.getCadesBucketed()))
+			.append(highlight(gameRecord.getFlagsSafed()))
+			.append(".")
 			.build();
 
-		String offensiveCombat = new ChatMessageBuilder()
+		final String offensiveCombat = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
 			.append("Dealt ")
-			.append(higlight(String.format("~%.0f", gameRecord.getDamageDealt())))
+			.append(highlight(String.format("~%.0f", gameRecord.getDamageDealt())))
 			.append(" damage (Max ")
-			.append(higlight(String.format("~%.0f", gameRecord.getHighestHitDealt())))
-			.append("). Cast rate: ")
-			.append(higlight(String.format("%.2f%%", gameRecord.getCastRate())))
-			.append(" ( ")
-			.append(higlight(gameRecord.getTotalCastAttempts()))
-			.append(" casts, ")
-			.append(higlight(gameRecord.getSplashes()))
-			.append(" splashes)")
+			.append(highlight(String.format("~%.0f", gameRecord.getHighestHitDealt())))
+			.append(").")
 			.build();
 
-		String defensiveCombat = new ChatMessageBuilder()
+		final String defensiveCombat = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
 			.append("Took ")
-			.append(higlight(String.format("%d", gameRecord.getDamageTaken())))
+			.append(highlight(String.format("%d", gameRecord.getDamageTaken())))
 			.append(" damage (Max ")
-			.append(higlight(String.format("%d", gameRecord.getHighestHitTaken())))
-			.append("). Died ")
-			.append(higlight(String.format("%dx", gameRecord.getDeaths())))
-			.append(". Spr'd: ")
-			.append(higlight(String.format("%dx", gameRecord.getTimesSpeared())))
-			.append(". Frozen ")
-			.append(higlight(String.format("%dx", gameRecord.getFrozenCount())))
-			.append(". Casted ")
-			.append(higlight(String.format("%dx", gameRecord.getTotalCastsOnMe())))
-			.append(" (")
-			.append(higlight(String.format("%.0f%%", gameRecord.getSplashRate())))
-			.append(" splashes)")
+			.append(highlight(String.format("%d", gameRecord.getHighestHitTaken())))
+			.append("). Died: ")
+			.append(highlight(String.format("%dx", gameRecord.getDeaths())))
+			.append(". Speared: ")
+			.append(highlight(String.format("%dx", gameRecord.getTimesSpeared())))
+			.append(". Frozen: ")
+			.append(highlight(String.format("%dx", gameRecord.getFreezesOnMe())))
+			.append(".")
 			.build();
 
 		send(gameSummary, cwSummary, offensiveCombat, defensiveCombat);
@@ -387,19 +319,5 @@ public class CastleWarsPlugin extends Plugin
 				.runeLiteFormattedMessage(message)
 				.build());
 		}
-	}
-
-	private String higlight(int value)
-	{
-		return higlight(Integer.toString(value));
-	}
-
-	private String higlight(String value)
-	{
-		return new ChatMessageBuilder()
-			.append(ChatColorType.HIGHLIGHT)
-			.append(value)
-			.append(ChatColorType.NORMAL)
-			.build();
 	}
 }
