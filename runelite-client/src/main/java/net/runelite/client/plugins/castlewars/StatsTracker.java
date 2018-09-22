@@ -138,7 +138,7 @@ class StatsTracker
 	void onDroppedFlagDespawned(CWFlag despawnedFlag, WorldPoint despawnedAt)
 	{
 		final int onTick = client.getTickCount();
-		boolean isOurFlag = despawnedFlag != null && despawnedFlag.getTeam().equals(ourTeam);
+		boolean isOurFlag = despawnedFlag != null && despawnedFlag.equals(ourTeam.getFlag());
 		boolean recentlyClickedOwnFlag = onTick - clickedOwnDroppedFlagOnTick < CLICK_ACTION_TICK_THRESHOLD;
 		boolean nextToFlag = despawnedAt.distanceTo(client.getLocalPlayer().getWorldLocation()) == 1;
 
@@ -193,13 +193,13 @@ class StatsTracker
 	private boolean holdingTheirFlag()
 	{
 		CWFlag flag = getWieldedFlag();
-		return flag != null && flag.getTeam().opposite().equals(ourTeam);
+		return ourTeam.opposite().getFlag().equals(flag);
 	}
 
 	private boolean holdingOwnFlag()
 	{
 		CWFlag flag = getWieldedFlag();
-		return flag != null && ourTeam.equals(flag.getTeam());
+		return ourTeam.getFlag().equals(flag);
 	}
 
 	private CWFlag getWieldedFlag()
@@ -222,7 +222,7 @@ class StatsTracker
 	private boolean inOwnBase()
 	{
 		CWBase currentBase = CWBase.match(client.getLocalPlayer().getWorldLocation());
-		return currentBase != null && currentBase.getTeam().equals(ourTeam);
+		return ourTeam.getBase().equals(currentBase);
 	}
 
 	private boolean visiblePlayerHoldingOurFlag()
@@ -236,7 +236,7 @@ class StatsTracker
 			{
 				int weaponID = player.getPlayerComposition().getEquipmentId(KitType.WEAPON);
 				CWFlag flag = CWFlag.fromEquipment(weaponID);
-				return flag != null && ourTeam.equals(flag.getTeam());
+				return ourTeam.getFlag().equals(flag);
 			});
 	}
 

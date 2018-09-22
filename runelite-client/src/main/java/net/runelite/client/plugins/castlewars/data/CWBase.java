@@ -32,10 +32,9 @@ import net.runelite.api.coords.WorldPoint;
 @Getter
 public enum CWBase
 {
-	ZAM_BASE(CWTeam.ZAM, CWArea.ZAM_4TH, CWArea.ZAM_3RD, CWArea.ZAM_SPAWN, CWArea.ZAM_GROUND),
-	SARA_BASE(CWTeam.SARA, CWArea.SARA_4TH, CWArea.SARA_3RD, CWArea.SARA_SPAWN, CWArea.SARA_GROUND);
+	ZAM_BASE(CWArea.ZAM_4TH, CWArea.ZAM_3RD, CWArea.ZAM_SPAWN, CWArea.ZAM_GROUND),
+	SARA_BASE(CWArea.SARA_4TH, CWArea.SARA_3RD, CWArea.SARA_SPAWN, CWArea.SARA_GROUND);
 
-	private final CWTeam team;
 	private final CWArea fourth;
 	private final CWArea third;
 	private final CWArea spawn;

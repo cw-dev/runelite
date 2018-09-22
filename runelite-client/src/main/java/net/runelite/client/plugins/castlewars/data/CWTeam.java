@@ -36,13 +36,11 @@ import net.runelite.api.widgets.WidgetInfo;
 @Getter
 public enum CWTeam
 {
-	SARA(1, WidgetInfo.CW_TIME_REMAINING_SARA, new Color(142, 168, 255)),
-	ZAM(2, WidgetInfo.CW_TIME_REMAINING_ZAM, new Color(255, 156, 115)),
-	NONE(0, null, null);
+	SARA(1, WidgetInfo.CW_TIME_REMAINING_SARA, new Color(142, 168, 255), CWBase.SARA_BASE, CWFlag.SARA),
+	ZAM(2, WidgetInfo.CW_TIME_REMAINING_ZAM, new Color(255, 156, 115), CWBase.ZAM_BASE, CWFlag.ZAM),
+	NONE(0, null, null, null, null);
 
 	private static final Map<Integer, CWTeam> RS_TEAMS = new HashMap<>();
-	private static final Map<CWTeam, CWFlag> FLAGS = new HashMap<>();
-	private static final Map<CWTeam, CWBase> BASES = new HashMap<>();
 
 	static
 	{
@@ -51,23 +49,14 @@ public enum CWTeam
 		for (CWTeam team : teams)
 		{
 			RS_TEAMS.put(team.getTeam(), team);
-
-			if (CWFlag.SARA.getTeam().equals(team))
-			{
-				FLAGS.put(team, CWFlag.SARA);
-				BASES.put(team, CWBase.SARA_BASE);
-			}
-			else if (CWFlag.ZAM.getTeam().equals(team))
-			{
-				FLAGS.put(team, CWFlag.ZAM);
-				BASES.put(team, CWBase.ZAM_BASE);
-			}
 		}
 	}
 
 	private final int team;
 	private final WidgetInfo timeRemainingWidget;
 	private final Color color;
+	private final CWBase base;
+	private final CWFlag flag;
 
 	public static CWTeam ofPlayer(Player player)
 	{
@@ -82,15 +71,5 @@ public enum CWTeam
 	public CWTeam opposite()
 	{
 		return this == ZAM ? SARA : this == SARA ? ZAM : NONE;
-	}
-
-	public CWFlag getFlag()
-	{
-		return FLAGS.get(this);
-	}
-
-	public CWBase getBase()
-	{
-		return BASES.get(this);
 	}
 }
