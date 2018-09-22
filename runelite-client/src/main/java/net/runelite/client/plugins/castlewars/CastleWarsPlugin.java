@@ -64,6 +64,7 @@ import net.runelite.client.util.Text;
 @Slf4j
 public class CastleWarsPlugin extends Plugin
 {
+	private static final String WELCOME_MESSAGE = "Welcome to RuneScape.";
 	private static final String FROZEN_MESSAGE = "You have been frozen!";
 
 	@Inject
@@ -211,6 +212,25 @@ public class CastleWarsPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		// Start sending old messages right after the welcome message, as that is most reliable source
+		// of information that chat history was reset
+		if (event.getMessage().equals(WELCOME_MESSAGE))
+		{
+			GameRecord gameRecord = new GameRecord(client.getWorld(), 24, CWTeam.SARA);
+			gameRecord.setSaraScore(5);
+			gameRecord.setZamScore(4);
+			gameRecord.setFlagsSafed(2);
+			gameRecord.setFlagsScored(3);
+			gameRecord.setTimesSpeared(1);
+			gameRecord.setFreezesOnMe(14);
+			gameRecord.setDeaths(6);
+			gameRecord.setDamageDealt(6025);
+			gameRecord.setHighestHitDealt(62);
+			gameRecord.setDamageTaken(3048);
+			gameRecord.setHighestHitTaken(51);
+			sendGameRecordMessage(gameRecord);
+		}
+
 		if (!inCwGame)
 		{
 			return;
@@ -220,7 +240,6 @@ public class CastleWarsPlugin extends Plugin
 		{
 			statsTracker.recordFrozen();
 		}
-
 	}
 
 	private void checkInGame()
@@ -228,7 +247,7 @@ public class CastleWarsPlugin extends Plugin
 		boolean cwHUDVisible;
 		CWTeam ourTeam = CWTeam.ofPlayer(client.getLocalPlayer());
 
-		if (ourTeam == null || ourTeam.equals(CWTeam.NONE))
+		if (ourTeam == null)
 		{
 			cwHUDVisible = false;
 		}
@@ -271,8 +290,14 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		final String info = new ChatMessageBuilder()
-			.append("Caste Wars - ")
+		final boolean tie = gameRecord.getSaraScore() == gameRecord.getZamScore();
+		final boolean won = gameRecord.getTeam() == CWTeam.SARA
+			? gameRecord.getSaraScore() > gameRecord.getZamScore()
+			: gameRecord.getZamScore() > gameRecord.getSaraScore();
+
+		final String summary = new ChatMessageBuilder()
+			.append(ChatColorType.NORMAL)
+			.append("Castle Wars - ")
 			.append(highlight(String.format("%dv%d", gameRecord.getTeamSize(), gameRecord.getTeamSize())))
 			.append(" - World ")
 			.append(String.format("%d", gameRecord.getWorld()))
@@ -280,11 +305,12 @@ public class CastleWarsPlugin extends Plugin
 
 		final String score = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
-			.append("Zamorak ")
-			.append(highlight(gameRecord.getZamScore()))
+			.append(gameRecord.getTeam().toString())
 			.append(" - ")
-			.append(highlight(gameRecord.getSaraScore()))
-			.append(" Saradomin")
+			.append(highlight(tie ? "Tie" : won ? "Victory" : "Loss"))
+			.append(" (")
+			.append(String.format("%d-%d", gameRecord.getSaraScore(), gameRecord.getZamScore()))
+			.append(")")
 			.build();
 
 		final String damage = new ChatMessageBuilder()
@@ -308,14 +334,14 @@ public class CastleWarsPlugin extends Plugin
 			.append(" Saves: ")
 			.append(highlight(gameRecord.getFlagsSafed()))
 			.append(" Deaths: ")
-			.append(highlight(String.format("%dx", gameRecord.getDeaths())))
+			.append(highlight(String.format("%d", gameRecord.getDeaths())))
 			.append(" Stuns: ")
-			.append(highlight(String.format("%dx", gameRecord.getTimesSpeared())))
+			.append(highlight(String.format("%d", gameRecord.getTimesSpeared())))
 			.append(" Freezes: ")
-			.append(highlight(String.format("%dx", gameRecord.getFreezesOnMe())))
+			.append(highlight(String.format("%d", gameRecord.getFreezesOnMe())))
 			.build();
 
-		send(score, info, damage, player);
+		send(summary, score, damage, player);
 	}
 
 	private void send(String... messages)

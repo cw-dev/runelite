@@ -26,6 +26,7 @@ package net.runelite.client.plugins.castlewars;
 
 import java.time.Instant;
 import lombok.Data;
+import net.runelite.client.plugins.castlewars.data.CWTeam;
 
 @Data
 class GameRecord
@@ -33,6 +34,7 @@ class GameRecord
 	private final Instant created = Instant.now();
 	private final int world;
 	private final int teamSize;
+	private final CWTeam team;
 
 	private int zamScore;
 	private int saraScore;
