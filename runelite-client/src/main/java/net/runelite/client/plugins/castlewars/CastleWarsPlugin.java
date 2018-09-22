@@ -91,6 +91,13 @@ public class CastleWarsPlugin extends Plugin
 			.build();
 	}
 
+	@Override
+	protected void shutDown()
+	{
+		inCwGame = false;
+		statsTracker.reset();
+	}
+
 	@Subscribe
 	public void onAnimationChanged(AnimationChanged event)
 	{
@@ -245,6 +252,7 @@ public class CastleWarsPlugin extends Plugin
 		else
 		{
 			sendGameRecordMessage(statsTracker.finishGame());
+			statsTracker.reset();
 		}
 	}
 
