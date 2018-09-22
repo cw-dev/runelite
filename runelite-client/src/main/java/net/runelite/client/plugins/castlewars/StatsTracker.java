@@ -76,12 +76,14 @@ class StatsTracker
 	{
 		currentGame.setSaraScore(client.getVar(Varbits.CW_SARA_SCORE));
 		currentGame.setZamScore(client.getVar(Varbits.CW_ZAM_SCORE));
+		return currentGame;
+	}
 
-		final GameRecord game = currentGame;
+	void reset()
+	{
 		currentGame = null;
 		ourTeam = null;
 		lastHPXP = 0;
-		return game;
 	}
 
 	void recordDamageDealt()
