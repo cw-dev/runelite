@@ -64,7 +64,6 @@ import net.runelite.client.util.Text;
 @Slf4j
 public class CastleWarsPlugin extends Plugin
 {
-	private static final String WELCOME_MESSAGE = "Welcome to RuneScape.";
 	private static final String FROZEN_MESSAGE = "You have been frozen!";
 
 	@Inject
@@ -212,25 +211,6 @@ public class CastleWarsPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
-		// Start sending old messages right after the welcome message, as that is most reliable source
-		// of information that chat history was reset
-		if (event.getMessage().equals(WELCOME_MESSAGE))
-		{
-			GameRecord gameRecord = new GameRecord(client.getWorld(), 24, CWTeam.SARA);
-			gameRecord.setSaraScore(5);
-			gameRecord.setZamScore(4);
-			gameRecord.setFlagsSafed(2);
-			gameRecord.setFlagsScored(3);
-			gameRecord.setTimesSpeared(1);
-			gameRecord.setFreezesOnMe(14);
-			gameRecord.setDeaths(6);
-			gameRecord.setDamageDealt(6025);
-			gameRecord.setHighestHitDealt(62);
-			gameRecord.setDamageTaken(3048);
-			gameRecord.setHighestHitTaken(51);
-			sendGameRecordMessage(gameRecord);
-		}
-
 		if (!inCwGame)
 		{
 			return;
