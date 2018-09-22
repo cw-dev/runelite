@@ -33,12 +33,11 @@ import net.runelite.api.ObjectID;
 @Getter
 public enum CWFlag
 {
-	ZAM(ItemID.ZAMORAK_BANNER, ObjectID.ZAMORAK_STANDARD, CWTeam.ZAM, "Zamorak Standard"),
-	SARA(ItemID.SARADOMIN_BANNER, ObjectID.SARADOMIN_STANDARD, CWTeam.SARA, "Saradomin Standard");
+	ZAM(ItemID.ZAMORAK_BANNER, ObjectID.ZAMORAK_STANDARD, "Zamorak Standard"),
+	SARA(ItemID.SARADOMIN_BANNER, ObjectID.SARADOMIN_STANDARD, "Saradomin Standard");
 
 	private final Integer equipmentId;
 	private final Integer droppedObjectId;
-	private final CWTeam team;
 	private final String menuName;
 
 	public static CWFlag fromEquipment(int equipmentId)
