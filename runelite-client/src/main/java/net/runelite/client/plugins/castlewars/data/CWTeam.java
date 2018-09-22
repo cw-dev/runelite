@@ -36,9 +36,8 @@ import net.runelite.api.widgets.WidgetInfo;
 @Getter
 public enum CWTeam
 {
-	SARA(1, WidgetInfo.CW_TIME_REMAINING_SARA, new Color(142, 168, 255), CWBase.SARA_BASE, CWFlag.SARA),
-	ZAM(2, WidgetInfo.CW_TIME_REMAINING_ZAM, new Color(255, 156, 115), CWBase.ZAM_BASE, CWFlag.ZAM),
-	NONE(0, null, null, null, null);
+	SARA("Saradomin", 1, WidgetInfo.CW_TIME_REMAINING_SARA, new Color(142, 168, 255), CWBase.SARA_BASE, CWFlag.SARA),
+	ZAM("Zamorak", 2, WidgetInfo.CW_TIME_REMAINING_ZAM, new Color(255, 156, 115), CWBase.ZAM_BASE, CWFlag.ZAM);
 
 	private static final Map<Integer, CWTeam> RS_TEAMS = new HashMap<>();
 
@@ -52,6 +51,7 @@ public enum CWTeam
 		}
 	}
 
+	private final String name;
 	private final int team;
 	private final WidgetInfo timeRemainingWidget;
 	private final Color color;
@@ -60,16 +60,17 @@ public enum CWTeam
 
 	public static CWTeam ofPlayer(Player player)
 	{
-		if (player == null)
-		{
-			return NONE;
-		}
-
-		return RS_TEAMS.getOrDefault(player.getTeam(), NONE);
+		return RS_TEAMS.get(player.getTeam());
 	}
 
 	public CWTeam opposite()
 	{
-		return this == ZAM ? SARA : this == SARA ? ZAM : NONE;
+		return this == ZAM ? SARA : ZAM;
+	}
+
+	@Override
+	public String toString()
+	{
+		return name;
 	}
 }

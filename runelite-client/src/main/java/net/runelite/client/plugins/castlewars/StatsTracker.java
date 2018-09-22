@@ -68,7 +68,7 @@ class StatsTracker
 	void startGame(int world, int validLobbyPlayers)
 	{
 		ourTeam = CWTeam.ofPlayer(client.getLocalPlayer());
-		currentGame = new GameRecord(world, validLobbyPlayers);
+		currentGame = new GameRecord(world, validLobbyPlayers, ourTeam);
 		lastHPXP = client.getSkillExperience(Skill.HITPOINTS);
 	}
 
