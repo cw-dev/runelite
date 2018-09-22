@@ -263,51 +263,51 @@ public class CastleWarsPlugin extends Plugin
 			return;
 		}
 
-		final String gameSummary = new ChatMessageBuilder()
+		final String info = new ChatMessageBuilder()
+			.append("Caste Wars - ")
+			.append(highlight(String.format("%dv%d", gameRecord.getTeamSize(), gameRecord.getTeamSize())))
+			.append(" - World ")
+			.append(String.format("%d", gameRecord.getWorld()))
+			.build();
+
+		final String score = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
 			.append("Zamorak ")
 			.append(highlight(gameRecord.getZamScore()))
 			.append(" - ")
 			.append(highlight(gameRecord.getSaraScore()))
-			.append(" Saradomin | ")
-			.append(highlight(String.format("%dv%d", gameRecord.getTeamSize(), gameRecord.getTeamSize())))
-			.append(String.format(" [w%d]", gameRecord.getWorld()))
+			.append(" Saradomin")
 			.build();
 
-		final String cwSummary = new ChatMessageBuilder()
+		final String damage = new ChatMessageBuilder()
 			.append(ChatColorType.NORMAL)
-			.append("Scored: ")
-			.append(highlight(gameRecord.getFlagsScored()))
-			.append(". Safed: ")
-			.append(highlight(gameRecord.getFlagsSafed()))
-			.append(".")
-			.build();
-
-		final String offensiveCombat = new ChatMessageBuilder()
-			.append(ChatColorType.NORMAL)
-			.append("Dealt ")
-			.append(highlight(String.format("~%.0f", gameRecord.getDamageDealt())))
-			.append(" damage (Max ")
-			.append(highlight(String.format("~%.0f", gameRecord.getHighestHitDealt())))
-			.append(").")
-			.build();
-
-		final String defensiveCombat = new ChatMessageBuilder()
-			.append(ChatColorType.NORMAL)
-			.append("Took ")
+			.append("Damage dealt: ")
+			.append(highlight(String.format("%.0f", gameRecord.getDamageDealt())))
+			.append(" (Max ")
+			.append(highlight(String.format("%.0f", gameRecord.getHighestHitDealt())))
+			.append(")")
+			.append(" Damage taken: ")
 			.append(highlight(String.format("%d", gameRecord.getDamageTaken())))
-			.append(" damage (Max ")
+			.append(" (Max ")
 			.append(highlight(String.format("%d", gameRecord.getHighestHitTaken())))
-			.append("). Died: ")
-			.append(highlight(String.format("%dx", gameRecord.getDeaths())))
-			.append(". Speared: ")
-			.append(highlight(String.format("%dx", gameRecord.getTimesSpeared())))
-			.append(". Frozen: ")
-			.append(highlight(String.format("%dx", gameRecord.getFreezesOnMe())))
-			.append(".")
+			.append(")")
 			.build();
 
-		send(gameSummary, cwSummary, offensiveCombat, defensiveCombat);
+		final String player = new ChatMessageBuilder()
+			.append(ChatColorType.NORMAL)
+			.append("Captures: ")
+			.append(highlight(gameRecord.getFlagsScored()))
+			.append(" Saves: ")
+			.append(highlight(gameRecord.getFlagsSafed()))
+			.append(" Deaths: ")
+			.append(highlight(String.format("%dx", gameRecord.getDeaths())))
+			.append(" Stuns: ")
+			.append(highlight(String.format("%dx", gameRecord.getTimesSpeared())))
+			.append(" Freezes: ")
+			.append(highlight(String.format("%dx", gameRecord.getFreezesOnMe())))
+			.build();
+
+		send(score, info, damage, player);
 	}
 
 	private void send(String... messages)
