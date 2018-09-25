@@ -26,34 +26,47 @@ package net.runelite.client.plugins.castlewars;
 
 import com.google.common.eventbus.Subscribe;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.AnimationID;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
+import net.runelite.api.ItemID;
+import net.runelite.api.NPC;
+import net.runelite.api.NpcID;
 import net.runelite.api.Player;
 import net.runelite.api.Skill;
+import net.runelite.api.VarPlayer;
 import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ExperienceChanged;
 import net.runelite.api.events.GameObjectDespawned;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.HitsplatApplied;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.LocalPlayerDeath;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.NpcDespawned;
+import net.runelite.api.events.NpcSpawned;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.castlewars.data.CWFlag;
 import net.runelite.client.plugins.castlewars.data.CWTeam;
+import net.runelite.client.ui.overlay.infobox.InfoBoxManager;
 import net.runelite.client.util.Text;
 
 @PluginDescriptor(
@@ -65,6 +78,8 @@ import net.runelite.client.util.Text;
 public class CastleWarsPlugin extends Plugin
 {
 	private static final String FROZEN_MESSAGE = "You have been frozen!";
+	private static final Pattern NUMBER_PATTERN = Pattern.compile("([0-9]+)");
+	private static final int TICKS_PER_MIN = 100;
 
 	@Inject
 	private Client client;
@@ -73,9 +88,19 @@ public class CastleWarsPlugin extends Plugin
 	private ChatMessageManager chatMessageManager;
 
 	@Inject
+	private InfoBoxManager infoBoxManager;
+
+	@Inject
+	private ItemManager itemManager;
+
+	@Inject
 	private StatsTracker statsTracker;
 
 	private boolean inCwGame = false;
+	private int timeChangedOnTick;
+	private int minsUntilNextGame;
+	private NPC lanthus;
+	private CastleWarsTimer timer;
 
 	private static String highlight(int value)
 	{
@@ -95,7 +120,9 @@ public class CastleWarsPlugin extends Plugin
 	protected void shutDown()
 	{
 		inCwGame = false;
+		lanthus = null;
 		statsTracker.reset();
+		resetWaitingTimer();
 	}
 
 	@Subscribe
@@ -222,6 +249,108 @@ public class CastleWarsPlugin extends Plugin
 		}
 	}
 
+	@Subscribe
+	public void onNpcSpawned(NpcSpawned event)
+	{
+		NPC npc = event.getNpc();
+		if (npc != null && npc.getId() == NpcID.LANTHUS)
+		{
+			lanthus = npc;
+		}
+	}
+
+	@Subscribe
+	public void onNpcDespawned(NpcDespawned event)
+	{
+		if (event.getNpc() == lanthus)
+		{
+			lanthus = null;
+		}
+	}
+
+	public void onLanthusAnnounce(String announcement)
+	{
+		if (timeChangedOnTick != 0)
+		{
+			return;
+		}
+
+		if (announcement != null && announcement.contains("minute"))
+		{
+			Matcher m = NUMBER_PATTERN.matcher(announcement);
+			if (m.find())
+			{
+				minsUntilNextGame = Integer.valueOf(m.group());
+				timeChangedOnTick = client.getTickCount();
+				addWaitingTimer();
+			}
+		}
+	}
+
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event)
+	{
+		if (inCwGame || timeChangedOnTick != 0)
+		{
+			return;
+		}
+
+		final int updatedMinutes = client.getVar(VarPlayer.CW_GAME_MINS);
+		if (updatedMinutes != 0 && updatedMinutes != minsUntilNextGame)
+		{
+			if (minsUntilNextGame != 0)
+			{
+				timeChangedOnTick = client.getTickCount();
+			}
+			minsUntilNextGame = updatedMinutes;
+			addWaitingTimer();
+		}
+	}
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		final GameState gameState = event.getGameState();
+		if (!gameState.equals(GameState.LOGGED_IN) && !gameState.equals(GameState.LOADING))
+		{
+			resetWaitingTimer();
+		}
+	}
+
+	private void addWaitingTimer()
+	{
+		if (timer != null)
+		{
+			return;
+		}
+
+		timer = new CastleWarsTimer(itemManager.getImage(ItemID.DECORATIVE_HELM_4511), this);
+		infoBoxManager.addInfoBox(timer);
+	}
+
+	private void resetWaitingTimer()
+	{
+		timeChangedOnTick = minsUntilNextGame = 0;
+
+		if (timer != null)
+		{
+			infoBoxManager.removeInfoBox(timer);
+			timer = null;
+		}
+	}
+
+	String getTTGText()
+	{
+		if (timeChangedOnTick == 0)
+		{
+			return "<" + minsUntilNextGame + ":00";
+		}
+
+		int ticksToGame = minsUntilNextGame * TICKS_PER_MIN - (client.getTickCount() - timeChangedOnTick);
+		int secsToGame = (int) (ticksToGame * 0.6);
+		return String.format("%d:%02d", (secsToGame % 3600) / 60, secsToGame % 60);
+	}
+
 	private void checkInGame()
 	{
 		boolean cwHUDVisible;
@@ -247,6 +376,7 @@ public class CastleWarsPlugin extends Plugin
 		if (inCwGame)
 		{
 			statsTracker.startGame(client.getWorld(), countValidLobbyPlayers());
+			resetWaitingTimer();
 		}
 		else
 		{

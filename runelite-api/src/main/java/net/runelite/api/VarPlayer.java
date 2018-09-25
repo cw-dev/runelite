@@ -46,6 +46,7 @@ public enum VarPlayer
 	IN_RAID_PARTY(1427),
 
 	NMZ_REWARD_POINTS(1060),
+	CW_GAME_MINS(380),
 
 	/**
 	 * Experience tracker goal start.
