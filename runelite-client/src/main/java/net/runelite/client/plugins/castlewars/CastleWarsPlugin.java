@@ -24,16 +24,19 @@
  */
 package net.runelite.client.plugins.castlewars;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.eventbus.Subscribe;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
+import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.AnimationID;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
@@ -79,7 +82,7 @@ public class CastleWarsPlugin extends Plugin
 {
 	private static final String FROZEN_MESSAGE = "You have been frozen!";
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("([0-9]+)");
-	private static final int TICKS_PER_MIN = 100;
+	private static final Set<Integer> WAITING_REGION_IDS = ImmutableSet.of(9776, 9620);
 
 	@Inject
 	private Client client;
@@ -96,11 +99,15 @@ public class CastleWarsPlugin extends Plugin
 	@Inject
 	private StatsTracker statsTracker;
 
-	private boolean inCwGame = false;
+	@Getter(AccessLevel.PACKAGE)
 	private int timeChangedOnTick;
+
+	@Getter(AccessLevel.PACKAGE)
 	private int minsUntilNextGame;
+
 	private NPC lanthus;
 	private CastleWarsTimer timer;
+	private boolean inCwGame = false;
 
 	private static String highlight(int value)
 	{
@@ -270,11 +277,6 @@ public class CastleWarsPlugin extends Plugin
 
 	public void onLanthusAnnounce(String announcement)
 	{
-		if (timeChangedOnTick != 0)
-		{
-			return;
-		}
-
 		if (announcement != null && announcement.contains("minute"))
 		{
 			Matcher m = NUMBER_PATTERN.matcher(announcement);
@@ -310,8 +312,8 @@ public class CastleWarsPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		final GameState gameState = event.getGameState();
-		if (!gameState.equals(GameState.LOGGED_IN) && !gameState.equals(GameState.LOADING))
+		final Player local = client.getLocalPlayer();
+		if (local == null || !WAITING_REGION_IDS.contains(local.getWorldLocation().getRegionID()))
 		{
 			resetWaitingTimer();
 		}
@@ -319,36 +321,23 @@ public class CastleWarsPlugin extends Plugin
 
 	private void addWaitingTimer()
 	{
-		if (timer != null)
+		if (timer != null || timeChangedOnTick == 0)
 		{
 			return;
 		}
 
-		timer = new CastleWarsTimer(itemManager.getImage(ItemID.DECORATIVE_HELM_4511), this);
+		timer = new CastleWarsTimer(itemManager.getImage(ItemID.DECORATIVE_HELM_4511), this, client);
 		infoBoxManager.addInfoBox(timer);
 	}
 
 	private void resetWaitingTimer()
 	{
 		timeChangedOnTick = minsUntilNextGame = 0;
-
 		if (timer != null)
 		{
 			infoBoxManager.removeInfoBox(timer);
 			timer = null;
 		}
-	}
-
-	String getTTGText()
-	{
-		if (timeChangedOnTick == 0)
-		{
-			return "<" + minsUntilNextGame + ":00";
-		}
-
-		int ticksToGame = minsUntilNextGame * TICKS_PER_MIN - (client.getTickCount() - timeChangedOnTick);
-		int secsToGame = (int) (ticksToGame * 0.6);
-		return String.format("%d:%02d", (secsToGame % 3600) / 60, secsToGame % 60);
 	}
 
 	private void checkInGame()
@@ -376,7 +365,6 @@ public class CastleWarsPlugin extends Plugin
 		if (inCwGame)
 		{
 			statsTracker.startGame(client.getWorld(), countValidLobbyPlayers());
-			resetWaitingTimer();
 		}
 		else
 		{

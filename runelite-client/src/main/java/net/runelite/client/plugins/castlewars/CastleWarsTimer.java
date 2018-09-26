@@ -26,21 +26,29 @@ package net.runelite.client.plugins.castlewars;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import net.runelite.api.Client;
 import net.runelite.client.ui.overlay.infobox.InfoBox;
 
-public class CastleWarsTimer extends InfoBox
+class CastleWarsTimer extends InfoBox
 {
+	private static final int TICKS_PER_MIN = 100;
 	private final CastleWarsPlugin cwPlugin;
-	public CastleWarsTimer(BufferedImage image, CastleWarsPlugin plugin)
+	private final Client client;
+
+	CastleWarsTimer(BufferedImage image, CastleWarsPlugin plugin, Client client)
 	{
 		super(image, plugin);
 		this.cwPlugin = plugin;
+		this.client = client;
 	}
 
 	@Override
 	public String getText()
 	{
-		return cwPlugin.getTTGText();
+		int ticksSinceChange = client.getTickCount() - cwPlugin.getTimeChangedOnTick();
+		int ticksToGame = cwPlugin.getMinsUntilNextGame() * TICKS_PER_MIN - ticksSinceChange;
+		int secsToGame = (int) (ticksToGame * 0.6);
+		return String.format("%d:%02d", (secsToGame % 3600) / 60, secsToGame % 60);
 	}
 
 	@Override
