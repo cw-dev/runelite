@@ -214,6 +214,7 @@ public class CastleWarsPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		checkInGame();
+		checkLanthusAnnounce();
 	}
 
 	@Subscribe
@@ -276,8 +277,14 @@ public class CastleWarsPlugin extends Plugin
 		}
 	}
 
-	public void onLanthusAnnounce(String announcement)
+	private void checkLanthusAnnounce()
 	{
+		if (lanthus == null)
+		{
+			return;
+		}
+
+		final String announcement = lanthus.getOverhead();
 		if (announcement != null && announcement.contains("minute"))
 		{
 			Matcher m = NUMBER_PATTERN.matcher(announcement);
