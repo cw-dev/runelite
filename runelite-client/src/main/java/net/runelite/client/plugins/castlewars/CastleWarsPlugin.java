@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.AnimationID;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.Hitsplat;
 import net.runelite.api.InventoryID;
 import net.runelite.api.ItemContainer;
@@ -84,6 +85,7 @@ public class CastleWarsPlugin extends Plugin
 	private static final String FROZEN_MESSAGE = "You have been frozen!";
 	private static final Pattern NUMBER_PATTERN = Pattern.compile("([0-9]+)");
 	private static final Set<Integer> WAITING_REGION_IDS = ImmutableSet.of(9776, 9620);
+	private static final int TICKS_PER_MIN = 100;
 
 	@Inject
 	private Client client;
@@ -101,13 +103,11 @@ public class CastleWarsPlugin extends Plugin
 	private StatsTracker statsTracker;
 
 	@Getter(AccessLevel.PACKAGE)
-	private int timeChangedOnTick;
-
-	@Getter(AccessLevel.PACKAGE)
-	private int minsUntilNextGame;
+	private int gameStartsOnTick;
 
 	private NPC lanthus;
 	private CastleWarsTimer timer;
+	private int lastSeenMins;
 	private boolean inCwGame = false;
 
 	private static String highlight(int value)
@@ -290,8 +290,8 @@ public class CastleWarsPlugin extends Plugin
 			Matcher m = NUMBER_PATTERN.matcher(announcement);
 			if (m.find())
 			{
-				minsUntilNextGame = Integer.valueOf(m.group());
-				timeChangedOnTick = client.getTickCount();
+				lastSeenMins = Integer.valueOf(m.group());
+				gameStartsOnTick = lastSeenMins * TICKS_PER_MIN + client.getTickCount();
 				addWaitingTimer();
 			}
 		}
@@ -300,19 +300,19 @@ public class CastleWarsPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		if (inCwGame || timeChangedOnTick != 0)
+		if (inCwGame || gameStartsOnTick != 0)
 		{
 			return;
 		}
 
 		final int updatedMinutes = client.getVar(VarPlayer.CW_GAME_MINS);
-		if (updatedMinutes != 0 && updatedMinutes != minsUntilNextGame)
+		if (updatedMinutes != 0 && updatedMinutes != lastSeenMins)
 		{
-			if (minsUntilNextGame != 0)
+			if (lastSeenMins != 0)
 			{
-				timeChangedOnTick = client.getTickCount();
+				gameStartsOnTick = updatedMinutes * TICKS_PER_MIN + client.getTickCount();
 			}
-			minsUntilNextGame = updatedMinutes;
+			lastSeenMins = updatedMinutes;
 			addWaitingTimer();
 		}
 	}
@@ -321,7 +321,12 @@ public class CastleWarsPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		final Player local = client.getLocalPlayer();
-		if (local == null || !WAITING_REGION_IDS.contains(local.getWorldLocation().getRegionID()))
+		final GameState state = event.getGameState();
+
+		boolean nearWaitingArea = local != null && WAITING_REGION_IDS.contains(local.getWorldLocation().getRegionID());
+		boolean loggedIn = state == GameState.LOADING || state == GameState.LOGGED_IN;
+
+		if (!nearWaitingArea || !loggedIn)
 		{
 			resetWaitingTimer();
 		}
@@ -329,7 +334,7 @@ public class CastleWarsPlugin extends Plugin
 
 	private void addWaitingTimer()
 	{
-		if (timer != null || timeChangedOnTick == 0)
+		if (timer != null || gameStartsOnTick == 0)
 		{
 			return;
 		}
@@ -340,7 +345,8 @@ public class CastleWarsPlugin extends Plugin
 
 	private void resetWaitingTimer()
 	{
-		timeChangedOnTick = minsUntilNextGame = 0;
+		gameStartsOnTick = 0;
+		lastSeenMins = 0;
 		if (timer != null)
 		{
 			infoBoxManager.removeInfoBox(timer);

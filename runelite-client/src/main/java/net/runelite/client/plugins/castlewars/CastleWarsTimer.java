@@ -31,7 +31,6 @@ import net.runelite.client.ui.overlay.infobox.InfoBox;
 
 class CastleWarsTimer extends InfoBox
 {
-	private static final int TICKS_PER_MIN = 100;
 	private final CastleWarsPlugin cwPlugin;
 	private final Client client;
 
@@ -45,8 +44,7 @@ class CastleWarsTimer extends InfoBox
 	@Override
 	public String getText()
 	{
-		int ticksSinceChange = client.getTickCount() - cwPlugin.getTimeChangedOnTick();
-		int ticksToGame = cwPlugin.getMinsUntilNextGame() * TICKS_PER_MIN - ticksSinceChange;
+		int ticksToGame = cwPlugin.getGameStartsOnTick() - client.getTickCount();
 		int secsToGame = (int) (ticksToGame * 0.6);
 		return String.format("%d:%02d", (secsToGame % 3600) / 60, secsToGame % 60);
 	}
@@ -54,7 +52,7 @@ class CastleWarsTimer extends InfoBox
 	@Override
 	public String getTooltip()
 	{
-		return "Time until next CW game starts";
+		return "Next CW Game";
 	}
 
 	@Override
