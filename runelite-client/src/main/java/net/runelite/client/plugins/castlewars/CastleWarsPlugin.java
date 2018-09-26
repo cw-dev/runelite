@@ -75,7 +75,8 @@ import net.runelite.client.util.Text;
 @PluginDescriptor(
 	name = "Castle Wars",
 	description = "Show post-game competitive CW statistics such as cast rate and number of barricades set",
-	tags = {"castle wars", "cw", "minigame"}
+	tags = {"castle wars", "cw", "minigame"},
+	enabledByDefault = false
 )
 @Slf4j
 public class CastleWarsPlugin extends Plugin
